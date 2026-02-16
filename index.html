@@ -2,578 +2,575 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>資產指揮官</title>
-    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>資產指揮官 | 戰略理財系統</title>
+    <!-- 引入 Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- 引入 Vue 3 -->
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
-
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        wealth: { bg: '#FDFBF7', text: '#2D3748', accent: '#F6AD55', green: '#68D391', pink: '#F687B3', blue: '#4A90E2', border: '#E2E8F0', dark: '#1A202C' }
-                    }
-                }
-            }
-        }
-    </script>
+    <!-- 引入 Lucide 圖示 -->
+    <script src="https://unpkg.com/lucide@latest"></script>
 
     <style>
-        body { background-color: #FDFBF7; color: #2D3748; -webkit-tap-highlight-color: transparent; font-family: 'Noto Sans TC', sans-serif; }
-        .glass { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(0,0,0,0.05); }
-        .card-shadow { box-shadow: 0 10px 30px -8px rgba(0, 0, 0, 0.04); }
-        .btn-active:active { transform: scale(0.96); }
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700;900&display=swap');
+        
+        :root {
+            --slate-bg: #71767C;
+        }
+
+        body {
+            background-color: var(--slate-bg);
+            font-family: 'Noto Sans TC', sans-serif;
+            color: #1F2937;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+        }
+
+        /* 模擬手機容器 */
+        .app-shell {
+            width: 100%;
+            max-width: 480px;
+            background-color: #FFFFFF;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            position: relative;
+            overflow-x: hidden;
+        }
+
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        
-        /* 指南裝飾樣式 */
-        .manual-section { margin-bottom: 32px; }
-        .logic-step { position: relative; padding-bottom: 24px; padding-left: 32px; border-left: 2px dashed #E2E8F0; }
-        .logic-step::before { content: ''; position: absolute; left: -10px; top: 0; width: 18px; height: 18px; border-radius: 50%; background: #F6AD55; border: 4px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        
-        .slide-up-enter-active, .slide-up-leave-active { transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
-        .slide-up-enter-from, .slide-up-leave-to { transform: translateY(100%); }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* 輸入框樣式還原圖片風格 */
+        .input-underline {
+            border-bottom: 2px solid #E5E7EB;
+            width: 100%;
+            padding: 8px 4px;
+            font-weight: 800;
+            outline: none;
+            transition: all 0.3s;
+            background: transparent;
+        }
+        .input-underline:focus {
+            border-color: #3B82F6;
+            background-color: #F9FAFB;
+        }
+
+        .step-card {
+            background: #FFFFFF;
+            border-radius: 40px;
+            padding: 24px;
+            margin-bottom: 20px;
+            border: 1px solid #F3F4F6;
+        }
+
+        .gray-card {
+            background: #F9FAFB;
+            border-radius: 40px;
+            padding: 24px;
+        }
+
+        .waterfall-step::after {
+            content: "↓";
+            display: block;
+            text-align: center;
+            color: #D1D5DB;
+            font-size: 1.5rem;
+            margin: 8px 0;
+        }
+        .waterfall-step:last-child::after { content: ""; }
+
+        .btn-sync {
+            background: #111827;
+            color: white;
+            width: 100%;
+            padding: 18px;
+            border-radius: 50px;
+            font-weight: 900;
+            font-size: 1.1rem;
+            letter-spacing: 1px;
+            transition: transform 0.2s;
+        }
+        .btn-sync:active { transform: scale(0.97); }
+
+        .toggle-btn {
+            @apply flex-1 py-2 text-[10px] font-black rounded-xl transition-all;
+        }
+
+        .msg-box {
+            position: fixed;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 99px;
+            font-size: 12px;
+            font-weight: 700;
+            z-index: 1000;
+            pointer-events: none;
+        }
     </style>
 </head>
-<body class="antialiased pb-32 select-none">
+<body>
 
-    <div id="app" class="min-h-screen flex flex-col">
+<div id="app" class="app-shell no-scrollbar">
+    
+    <!-- 提示框 -->
+    <div v-if="message" class="msg-box animate-bounce">{{ message }}</div>
+
+    <!-- 頂部導航 -->
+    <header class="p-6 pb-2 sticky top-0 bg-white/90 backdrop-blur-md z-50 border-b border-gray-50 flex justify-between items-center">
+        <i data-lucide="chevron-down" class="w-6 h-6 text-gray-800"></i>
+        <div class="text-center">
+            <h1 class="font-black text-lg tracking-tighter">資產指揮官</h1>
+            <p class="text-[9px] text-gray-400 font-mono uppercase">Strategic Finance v3.2</p>
+        </div>
+        <div class="flex items-center gap-3">
+            <button @click="exportCSV" class="p-1 text-gray-400"><i data-lucide="download" class="w-5 h-5"></i></button>
+            <i data-lucide="x" class="w-6 h-6 text-gray-800"></i>
+        </div>
+    </header>
+
+    <!-- 主分頁導覽 -->
+    <nav class="flex justify-around bg-white px-6 py-2 sticky top-[72px] z-40 border-b border-gray-50 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+        <button v-for="t in tabs" :key="t.id" @click="currentTab = t.id" :class="{'text-gray-900 border-b-2 border-gray-900': currentTab === t.id}" class="pb-2 px-1 transition-all">
+            {{ t.name }}
+        </button>
+    </nav>
+
+    <main class="p-6 flex-1 overflow-y-auto no-scrollbar space-y-10 pb-24">
         
-        <!-- 頂部 Header -->
-        <header class="sticky top-0 z-40 glass px-6 py-5 flex justify-between items-center shadow-sm">
-            <div class="flex items-center gap-4">
-                <div class="w-11 h-11 bg-wealth-dark rounded-2xl flex items-center justify-center text-white shadow-xl">
-                    <i class="fa-solid fa-chess-knight text-xl"></i>
-                </div>
-                <div>
-                    <h1 class="text-sm font-black tracking-[0.25em] text-gray-800 uppercase">資產指揮官</h1>
-                    <div class="flex items-center gap-1.5 mt-0.5">
-                        <span class="text-[9px] bg-wealth-accent text-white px-2 py-0.5 rounded-full font-black uppercase">LV.{{ stats.level }}</span>
-                        <span class="text-[10px] text-gray-400 font-bold tracking-widest">{{ levelName }}</span>
-                    </div>
-                </div>
+        <!-- SETUP: 戰略指令設定 -->
+        <div v-if="currentTab === 'setup'" class="animate-in fade-in duration-500 space-y-10">
+            
+            <div class="flex justify-between items-start">
+                <h2 class="text-3xl font-black flex items-center gap-3">
+                    <span class="w-2.5 h-8 bg-orange-400 rounded-full shadow-sm"></span>
+                    戰略指令
+                </h2>
+                <button @click="confirmRollover" class="bg-blue-500 text-white text-[9px] font-black px-4 py-2 rounded-xl flex items-center gap-2 shadow-lg active:scale-95">
+                    <i data-lucide="refresh-cw" class="w-3 h-3"></i> 開啟新月結轉
+                </button>
             </div>
-            <div class="text-right">
-                <p class="text-[9px] text-wealth-pink font-black uppercase mb-0.5 tracking-widest leading-none">信用卡隔離區</p>
-                <p class="text-xl font-mono font-black text-wealth-pink leading-none">NT$ {{ formatNumber(data.reservedCC) }}</p>
-            </div>
-        </header>
 
-        <main class="flex-1 max-w-md mx-auto w-full px-4 py-6 space-y-8">
-
-            <!-- 1. 核心指令摘要 -->
-            <section class="bg-white rounded-[2.5rem] p-7 border border-gray-100 card-shadow space-y-5">
-                <div class="flex justify-between items-center">
-                    <h2 class="text-sm font-black text-gray-700 flex items-center gap-2"><i class="fa-solid fa-compass text-wealth-accent"></i> 指揮摘要與診斷</h2>
-                    <button @click="showSetup = true" class="text-[10px] bg-wealth-dark text-white px-4 py-2 rounded-full font-bold shadow-md btn-active">設定中心</button>
+            <!-- STEP 1: 流動資產 -->
+            <section>
+                <div class="flex justify-between items-center mb-6">
+                    <p class="text-[10px] font-black text-gray-300 uppercase tracking-widest">Step 1. 流動資產與目標</p>
+                    <button @click="applyDefaultAllocation" class="bg-emerald-50 text-emerald-600 text-[10px] font-black px-3 py-1.5 rounded-full border border-emerald-100 flex items-center gap-1 active:bg-emerald-100">
+                        <i data-lucide="calculator" class="w-3 h-3"></i> 戰術建議比例
+                    </button>
                 </div>
 
-                <div class="p-5 rounded-3xl border transition-all duration-500" :class="levelData.style">
-                    <div class="flex items-center gap-3 mb-2">
-                        <i :class="levelData.icon + ' text-xl'"></i>
-                        <h3 class="text-sm font-black">{{ levelData.name }}階段核心任務</h3>
+                <div class="grid grid-cols-2 gap-8 mb-6">
+                    <div>
+                        <label class="text-[10px] font-black text-gray-400 uppercase block mb-1">主要薪資</label>
+                        <input type="number" v-model.number="config.salary" class="input-underline text-xl font-black">
                     </div>
-                    <p class="text-[11px] font-bold leading-relaxed opacity-90">{{ levelData.advice }}</p>
+                    <div>
+                        <label class="text-[10px] font-black text-emerald-400 uppercase block mb-1">額外獎金</label>
+                        <input type="number" v-model.number="config.bonus" class="input-underline text-xl font-black text-emerald-600">
+                    </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-3 pt-2">
-                    <div class="bg-gray-50 p-4 rounded-3xl border border-gray-100 shadow-inner">
-                        <p class="text-[8px] font-black text-gray-400 uppercase tracking-widest">護城河目標進度</p>
-                        <p class="text-xs font-mono font-black text-slate-700 mt-1">{{ formatNumber(data.emergencyFund) }} / {{ formatNumber(data.moatTarget) }}</p>
-                        <div class="w-full h-1.5 bg-gray-200 rounded-full mt-2 overflow-hidden">
-                            <div class="h-full bg-wealth-accent transition-all duration-1000" :style="{width: Math.min(data.emergencyFund/data.moatTarget*100, 100)+'%'}"></div>
-                        </div>
-                    </div>
-                    <div class="bg-orange-50/50 p-4 rounded-3xl border border-orange-100 shadow-inner relative">
-                        <p class="text-[8px] font-black text-wealth-accent uppercase tracking-widest">自由雜支餘額</p>
-                        <p class="text-xl font-mono font-black text-wealth-accent tracking-tighter mt-1" :class="stats.remaining < 0 ? 'text-red-500' : ''">
-                            NT$ {{ formatNumber(stats.remaining - data.reservedMisc) }}
-                        </p>
-                        <div v-if="stats.remaining < 0" class="absolute -top-1 -right-1 bg-red-500 text-white w-4 h-4 rounded-full flex items-center justify-center text-[8px] animate-bounce">!</div>
+                <div class="step-card bg-amber-50/50 border-amber-100">
+                    <label class="text-[10px] font-black text-orange-400 block mb-3 uppercase tracking-tighter">護城河目標水位 / 現有存款累積</label>
+                    <div class="grid grid-cols-2 gap-4">
+                        <input type="number" v-model.number="config.moatTarget" class="input-underline border-orange-200 text-orange-700 font-black">
+                        <input type="number" v-model.number="config.currentSavings" class="input-underline border-orange-200 text-orange-700 font-black">
                     </div>
                 </div>
             </section>
 
-            <!-- 導航分頁 -->
-            <div class="flex bg-gray-200/50 p-1.5 rounded-[1.8rem] border border-gray-100 shadow-inner overflow-x-auto no-scrollbar">
-                <button v-for="tab in tabs" :key="tab.id" @click="activeTab = tab.id"
-                        class="flex-1 flex flex-col items-center justify-center gap-1 py-2.5 text-[10px] font-black rounded-2xl transition-all min-w-[70px]"
-                        :class="activeTab === tab.id ? 'bg-white shadow-md text-wealth-accent' : 'text-gray-400'">
-                    <i :class="tab.icon"></i> {{ tab.name }}
-                </button>
-            </div>
-
-            <!-- TAB: 指南手冊 (最完整解說版) -->
-            <div v-if="activeTab === 'guide'" class="space-y-6 animate-in slide-in-from-bottom-4">
-                <div class="bg-white rounded-[2.5rem] p-8 border border-gray-100 card-shadow space-y-10">
-                    <div class="text-center space-y-2">
-                        <h2 class="text-xl font-black text-wealth-dark uppercase tracking-[0.3em]">指揮官手冊</h2>
-                        <p class="text-[9px] text-gray-400 font-bold uppercase tracking-widest leading-none">The Manual of Grit & Prosperity</p>
-                        <div class="w-10 h-1 bg-wealth-accent mx-auto rounded-full mt-2"></div>
-                    </div>
-
-                    <!-- 1. 三個分級解說 -->
-                    <div class="manual-section">
-                        <h3 class="text-xs font-black text-wealth-accent border-l-4 border-wealth-accent pl-3 uppercase mb-5 tracking-widest">財富分級診斷系統</h3>
-                        <div class="space-y-4">
-                            <div class="p-4 rounded-3xl bg-red-50 border border-red-100">
-                                <p class="text-[11px] font-black text-red-700 uppercase">Level 1：止血生存期</p>
-                                <p class="text-[10px] text-red-600 leading-relaxed font-bold mt-2">
-                                    診斷條件：存在利率高於 7% 的債務（如卡債、私人信貸）。<br>
-                                    核心目標：奪回財務控制權。在此階段，任何投資的複利都敵不過高利貸的吞噬。系統將引導您進入「止血路徑」，暫停投資，將餘額 100% 用於還款。
-                                </p>
-                            </div>
-                            <div class="p-4 rounded-3xl bg-yellow-50 border border-yellow-100">
-                                <p class="text-[11px] font-black text-yellow-700 uppercase">Level 2：護城河建築期</p>
-                                <p class="text-[10px] text-yellow-600 leading-relaxed font-bold mt-2">
-                                    診斷條件：無高利貸，但緊急預備金（護城河）低於安全目標（建議存滿 6 個月支出）。<br>
-                                    核心目標：建立心理底氣。存款就是您的自由度。此階段應削減不必要的雜支分配，優先將護城河補齊，確保失業或意外時仍能從容生活。
-                                </p>
-                            </div>
-                            <div class="p-4 rounded-3xl bg-green-50 border border-green-100">
-                                <p class="text-[11px] font-black text-green-700 uppercase">Level 3：資產擴張期</p>
-                                <p class="text-[10px] text-green-600 leading-relaxed font-bold mt-2">
-                                    診斷條件：財務結構穩定，擁有足夠的安全水位。<br>
-                                    核心目標：資產增值與複利應用。全面啟動 532 分配路徑，每月穩定投入 30% 定期定額資產與 20% 專項預存金，享受長期的財富成長。
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- 2. 兩大路徑說明 -->
-                    <div class="manual-section pt-4 border-t border-dashed">
-                        <h3 class="text-xs font-black text-wealth-dark uppercase border-l-4 border-wealth-dark pl-3 mb-5 tracking-widest">分派路徑執行邏輯</h3>
-                        <div class="pl-2 space-y-6">
-                            <div class="logic-step">
-                                <p class="text-[11px] font-black">路徑 A：有負債模式 (優先清償)</p>
-                                <p class="text-[10px] text-gray-400 font-bold leading-relaxed mt-1">
-                                    分派順序：固定支出 → 沖銷債務本金 → 必要生活費 → 零雜支。<br>
-                                    執行意義：強行止血，這是與時間的賽跑，確保資金不再無端流失。
-                                </p>
-                            </div>
-                            <div class="logic-step" style="border-left-color: transparent; padding-bottom: 0;">
-                                <p class="text-[11px] font-black">路徑 B：無負債模式 (資產增值)</p>
-                                <p class="text-[10px] text-gray-400 font-bold leading-relaxed mt-1">
-                                    分派順序：固定支出 → 資產投資 → 預存分攤 → 生活執行袋 → 雜支結餘。<br>
-                                    執行意義：在花錢前先支付給未來的自己，確保您不需記帳也能精準存到錢。
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- 3. 功能解析 -->
-                    <div class="manual-section pt-4 border-t border-dashed">
-                        <h3 class="text-xs font-black text-wealth-blue border-l-4 border-wealth-blue pl-3 uppercase mb-5 tracking-widest">核心模組操作方法</h3>
-                        <div class="space-y-4">
-                            <div class="bg-gray-50 p-5 rounded-[2rem]">
-                                <p class="text-[11px] font-black flex items-center gap-2 mb-2"><i class="fa-solid fa-credit-card text-wealth-pink"></i> 刷卡同步：專款隔離邏輯</p>
-                                <p class="text-[10px] text-gray-500 leading-relaxed font-bold">
-                                    每當刷卡後（如加油），在執行袋點擊「同步」。這不是消費，是「虛擬現金移動」。錢會被鎖入隔離區，確保帳單日銀行裡已有專款，不會挪用到次月預算。
-                                </p>
-                            </div>
-                            <div class="bg-gray-50 p-5 rounded-[2rem]">
-                                <p class="text-[11px] font-black flex items-center gap-2 mb-2"><i class="fa-solid fa-calendar-day text-wealth-blue"></i> 五週現金包：防止透支邏輯</p>
-                                <p class="text-[10px] text-gray-500 leading-relaxed font-bold">
-                                    每月按週領取餐費。領完後這週只需看手中剩多少錢。一旦領出，就不需再手機記帳。多領的第五週是為了對沖天數差，並作為月底結餘來源。
-                                </p>
-                            </div>
-                            <div class="bg-gray-50 p-5 rounded-[2rem]">
-                                <p class="text-[11px] font-black flex items-center gap-2 mb-2"><i class="fa-solid fa-heart text-wealth-pink"></i> 小花挑戰：成就感回饋邏輯</p>
-                                <p class="text-[10px] text-gray-500 leading-relaxed font-bold">
-                                    將月底剩下的雜支或零錢轉入。這是一種「財富剩餘本」，將省下的碎銀變成視覺化進度。點亮一顆心，代表您的底氣增加了一份。
-                                </p>
-                            </div>
+            <!-- STEP 2: 固定支出 -->
+            <section class="gray-card space-y-6">
+                <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Step 2. 固定必要支出 (月扣項目)</p>
+                <div class="grid grid-cols-2 gap-x-8 gap-y-6">
+                    <div v-for="(val, key) in config.fixed" :key="key">
+                        <label class="text-[10px] font-black text-gray-400 uppercase block mb-1">{{ fixedLabel(key) }}</label>
+                        <div class="flex items-center gap-1 border-b-2 border-gray-200">
+                            <span class="text-[8px] font-black text-gray-300 italic">NT$</span>
+                            <input type="number" v-model.number="config.fixed[key]" class="w-full py-1.5 text-right font-black text-sm bg-transparent outline-none">
                         </div>
                     </div>
                 </div>
-            </div>
+            </section>
 
-            <!-- TAB: 領取信封 -->
-            <div v-if="activeTab === 'budget'" class="space-y-6 animate-in fade-in">
-                <section class="space-y-3">
-                    <div class="flex justify-between items-center px-1">
-                        <h2 class="text-sm font-black text-gray-600 flex items-center gap-2"><i class="fa-solid fa-wallet text-wealth-accent"></i> 餐費週現金包</h2>
-                        <span class="text-[10px] font-black text-white bg-wealth-accent px-2 py-1 rounded-lg shadow-sm">週領 NT$ {{ formatNumber(weeklyFood) }}</span>
-                    </div>
-                    <div class="space-y-2">
-                        <button v-for="(date, i) in currentMonthWeeks" :key="i" @click="toggleWeek(i)" 
-                                class="w-full flex justify-between items-center p-5 rounded-[2.2rem] border-2 transition-all btn-active"
-                                :class="data.paidWeeks.includes(i) ? 'bg-gray-50 border-gray-100 opacity-60' : 'bg-white border-wealth-accent/20 shadow-sm'">
-                            <div class="text-left"><p class="text-[10px] font-mono font-black opacity-30">{{ date }}</p><p class="text-xs font-bold text-slate-700">第 {{ i+1 }} 週執行領取</p></div>
-                            <span v-if="data.paidWeeks.includes(i)" class="text-[10px] font-bold text-gray-400"><i class="fa-solid fa-check"></i> 已領取</span>
-                            <span v-else class="text-[10px] font-bold text-wealth-accent bg-orange-50 px-3 py-1.5 rounded-full border border-orange-100">領取</span>
-                        </button>
-                    </div>
-                </section>
-                
-                <section class="grid grid-cols-2 gap-3 pt-4 border-t border-dashed border-gray-200">
-                    <div v-for="bag in ['transportTotal', 'householdTotal']" :key="bag" class="bg-white p-4 rounded-[2.2rem] border border-gray-100 card-shadow">
-                        <p class="text-[9px] font-black text-gray-400 uppercase tracking-widest">{{ getBagLabel(bag) }}袋</p>
-                        <p class="text-lg font-mono font-bold text-gray-700 mt-1">NT$ {{ formatNumber(data[bag]) }}</p>
-                        <button @click="openModal('swipe', bag, getBagLabel(bag))" class="mt-3 w-full py-2.5 text-[10px] bg-wealth-dark text-white rounded-xl font-bold btn-active">刷卡同步</button>
-                    </div>
-                    <div class="bg-white p-5 rounded-[2.2rem] border-2 border-wealth-accent/20 bg-orange-50/10 card-shadow col-span-2 flex items-center justify-between">
-                        <div><p class="text-[9px] font-black text-wealth-accent uppercase">雜支/結餘袋 (現金來源)</p><p class="text-xl font-mono font-bold text-gray-800">NT$ {{ formatNumber(stats.remaining - data.reservedMisc) }}</p></div>
-                        <button @click="openModal('swipeMisc', 'reservedMisc', '雜支消費')" class="py-2.5 px-6 text-[10px] bg-wealth-accent text-white rounded-2xl font-black btn-active">同步刷卡</button>
-                    </div>
-                </section>
-            </div>
+            <!-- STEP 3: 債務監測 -->
+            <section class="step-card bg-rose-50/30 border-rose-100">
+                <p class="text-[10px] font-black text-rose-500 mb-6 uppercase tracking-widest">Step 3. 債務止血監測 (高利貸優先)</p>
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <input v-model="newDebt.name" placeholder="名稱" class="input-underline text-xs">
+                    <input type="number" v-model.number="newDebt.principal" placeholder="本金" class="input-underline text-xs">
+                    <input type="number" v-model.number="newDebt.rate" placeholder="利率 %" class="input-underline text-xs">
+                    <input type="number" v-model.number="newDebt.monthly" placeholder="月繳額" class="input-underline text-xs">
+                </div>
+                <button @click="addDebt" class="w-full bg-rose-500 text-white font-black py-4 rounded-2xl shadow-xl active:scale-95 transition-all">新增負債項目</button>
 
-            <!-- TAB: 拷問挑戰 -->
-            <div v-if="activeTab === 'challenge'" class="space-y-8 animate-in zoom-in-95">
-                <section class="bg-wealth-dark rounded-[2.5rem] p-8 text-white relative overflow-hidden shadow-2xl">
-                    <h2 class="text-sm font-black mb-6 text-wealth-accent flex items-center gap-2 tracking-widest"><i class="fa-solid fa-hourglass-half"></i> 生命工時拷問機</h2>
-                    <div class="space-y-6 relative z-10">
-                        <div class="relative">
-                            <span class="absolute left-0 bottom-2 text-gray-500 font-mono text-xl uppercase">NT$</span>
-                            <input type="number" v-model.number="soulPrice" placeholder="想買什麼？輸入價格..." class="w-full bg-transparent border-b-2 border-gray-700 pl-10 pb-2 text-3xl font-mono font-black focus:border-wealth-accent outline-none" />
-                        </div>
-                        <div v-if="soulPrice > 0" class="flex items-center justify-between bg-gray-800/50 p-5 rounded-2xl border border-gray-700">
-                            <div><p class="text-[9px] text-gray-400 font-black">代價生命時間</p><p class="text-4xl font-black text-wealth-accent mt-1">{{ (soulPrice / (data.salary / 160)).toFixed(1) }} <span class="text-xs font-sans opacity-40 uppercase">Hours</span></p></div>
-                            <div class="text-right">
-                                <p class="text-[10px] font-black px-4 py-2 rounded-full border shadow-inner" :class="soulPrice <= (stats.remaining - data.reservedMisc) ? 'border-green-500 text-green-500' : 'border-red-500 text-red-500'">
-                                    {{ soulPrice <= (stats.remaining - data.reservedMisc) ? '雜支足以支付' : '餘額不足停止' }}
-                                </p>
-                            </div>
-                        </div>
+                <div v-for="(debt, idx) in config.debts" :key="idx" class="mt-4 flex justify-between items-center p-4 bg-white rounded-2xl border border-rose-50">
+                    <div class="flex flex-col">
+                        <span class="text-[10px] font-black text-gray-600">{{ debt.name }}</span>
+                        <span class="text-[8px] font-bold" :class="debt.rate > 7 ? 'text-rose-600' : 'text-gray-400'">{{ debt.rate }}% {{ debt.rate > 7 ? '⚠️ 高利警報' : '🟢 低利環境' }}</span>
                     </div>
-                </section>
+                    <div class="flex items-center gap-4">
+                        <span class="font-black text-rose-500 text-sm">-$ {{ formatCurrency(debt.monthly) }}</span>
+                        <button @click="config.debts.splice(idx, 1)" class="text-gray-200 hover:text-rose-500"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                    </div>
+                </div>
+            </section>
 
-                <section class="bg-white rounded-[2.5rem] p-6 border border-gray-100 card-shadow space-y-4">
-                    <div class="flex justify-between items-end px-1">
-                        <div><p class="text-[10px] font-black text-gray-400">目前階段：{{ stats.currentStage }} / 5</p><h3 class="text-lg font-black text-wealth-dark uppercase tracking-widest">存錢視覺挑戰</h3></div>
-                        <div class="text-right"><p class="text-[10px] text-wealth-pink font-bold">每朵花 ${{ formatNumber(data.challengeConfig.flowerValue) }}</p><span class="text-xs font-mono font-black text-wealth-pink">{{ stats.doneInStage }}/20</span></div>
+            <!-- STEP 4: 預算分裝 -->
+            <section>
+                <div class="flex justify-between items-center mb-6">
+                    <p class="text-[10px] font-black text-blue-600 uppercase tracking-widest">Step 4. 預算分裝與動態編輯</p>
+                    <span :class="remainingBalance < 0 ? 'text-rose-600' : 'text-emerald-500'" class="font-black text-[10px]">剩餘待分：NT$ {{ formatCurrency(remainingBalance) }}</span>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div v-for="env in envelopes" :key="env.id" :class="env.type === 'green' ? 'bg-emerald-50 border-emerald-100 text-emerald-700' : 'bg-blue-50 border-blue-100 text-blue-700'" class="p-4 rounded-[24px] border transition-all">
+                        <label class="text-[8px] font-black uppercase opacity-60 mb-1 block">{{ env.name }}</label>
+                        <input type="number" v-model.number="env.budget" class="w-full bg-transparent border-b-2 border-black/5 font-black text-lg outline-none">
                     </div>
-                    <div class="flex flex-wrap gap-4 justify-center">
-                        <button v-for="n in 20" :key="n" @click="toggleFlower(n)" 
-                                class="w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 btn-active shadow-sm"
-                                :class="isFlowerDoneInStage(n) ? 'bg-wealth-pink text-white scale-110 shadow-lg' : 'bg-gray-100 text-gray-300 hover:bg-rose-50'">
-                            <i class="fa-solid fa-heart text-xs"></i>
-                        </button>
-                    </div>
-                </section>
-            </div>
+                </div>
+            </section>
 
-            <!-- TAB: 預存袋 -->
-            <div v-if="activeTab === 'sinking'" class="space-y-6">
-                <div class="grid grid-cols-2 gap-3">
-                    <div v-for="(fund, index) in data.sinkingFunds" :key="fund.id" @click="openModal('deposit', index, fund.name)"
-                         class="bg-white p-4 rounded-[2.2rem] border border-gray-100 card-shadow h-32 flex flex-col justify-between relative overflow-hidden btn-active transition-all group hover:border-wealth-accent">
-                        <div class="flex justify-between items-start z-10"><div class="p-2 bg-gray-50 rounded-xl text-gray-400 group-hover:text-wealth-accent transition-colors"><i :class="'fa-solid fa-' + getIcon(fund.icon)"></i></div><span class="text-[8px] font-black text-wealth-accent bg-orange-50 px-1 rounded">{{ Math.round((fund.current/fund.target)*100) }}%</span></div>
-                        <div class="z-10"><p class="text-[9px] font-black text-gray-400 truncate uppercase tracking-widest">{{ fund.name }}</p><p class="text-sm font-mono font-bold text-gray-700">NT$ {{ formatNumber(fund.current) }}</p></div>
-                        <div class="absolute bottom-0 left-0 w-full h-1 bg-gray-50"><div class="h-full bg-wealth-accent transition-all duration-1000" :style="{ width: `${Math.min((fund.current/fund.target)*100, 100)}%` }"></div></div>
-                    </div>
+            <button @click="currentTab = 'dashboard'" class="btn-sync shadow-2xl">同步指令並啟動戰情報告</button>
+        </div>
+
+        <!-- DASHBOARD: 戰報分析 -->
+        <div v-if="currentTab === 'dashboard'" class="animate-in slide-in-from-right duration-500 space-y-8">
+            <div class="flex justify-between items-end">
+                <h2 class="text-3xl font-black tracking-tighter">戰情報告</h2>
+                <div class="text-right">
+                    <p class="text-[9px] font-black text-gray-400 uppercase">生命工時</p>
+                    <p class="font-black text-xl">${{ lifeHourlyRate.toFixed(1) }} <span class="text-[10px] font-normal opacity-40">/ hr</span></p>
                 </div>
             </div>
 
-            <!-- TAB: 旅遊精算 -->
-            <div v-if="activeTab === 'travel'" class="space-y-6 animate-in slide-in-from-bottom-4">
-                <section class="bg-blue-500 rounded-[3rem] p-8 text-white relative overflow-hidden shadow-xl" style="background: linear-gradient(135deg, #4A90E2 0%, #357ABD 100%)">
-                    <i class="fa-solid fa-plane-departure absolute -top-4 -right-4 text-9xl opacity-20 rotate-12"></i>
-                    <h2 class="text-sm font-black mb-8 border-b border-white/20 pb-2 uppercase tracking-widest flex items-center gap-2">出國預算指揮中心</h2>
-                    <div class="space-y-6">
-                        <div class="grid grid-cols-2 gap-4 text-center">
-                            <div class="bg-white/10 p-4 rounded-3xl border border-white/10 shadow-inner">
-                                <p class="text-[9px] text-blue-100 font-bold uppercase mb-1">總預算目標</p>
-                                <p class="text-lg font-mono font-bold">NT$ {{ formatNumber(data.travel.total) }}</p>
-                            </div>
-                            <div class="bg-white/10 p-4 rounded-3xl border border-white/10 shadow-inner">
-                                <p class="text-[9px] text-rose-100 font-bold uppercase mb-1">固定費預扣</p>
-                                <p class="text-lg font-mono font-bold">NT$ {{ formatNumber(data.travel.fixed) }}</p>
-                            </div>
-                        </div>
-                        <div class="bg-white/20 rounded-[2.5rem] p-8 text-center shadow-lg border border-white/20 backdrop-blur-sm">
-                            <p class="text-[10px] text-white font-black uppercase tracking-[0.2em] mb-2">每日餐費上限 ({{ data.travel.days }}天)</p>
-                            <p class="text-4xl font-mono font-bold drop-shadow-md tracking-tighter">NT$ {{ formatNumber(Math.floor((data.travel.total - data.travel.fixed - data.travel.gifts) / data.travel.days)) }}</p>
-                        </div>
-                    </div>
-                </section>
+            <!-- 卡費隔離袋與待收回袋 -->
+            <div class="grid grid-cols-2 gap-4">
+                <div class="bg-indigo-600 p-6 rounded-[32px] text-white shadow-xl relative overflow-hidden">
+                    <div class="flex justify-between mb-2 opacity-50"><i data-lucide="credit-card" class="w-4 h-4"></i> <span class="text-[8px] font-black uppercase tracking-tighter">卡費隔離</span></div>
+                    <h3 class="text-2xl font-black">${{ formatCurrency(config.cardHolding) }}</h3>
+                    <p class="text-[8px] opacity-60 mt-1">此金額已從信封移出</p>
+                </div>
+                <div class="bg-emerald-600 p-6 rounded-[32px] text-white shadow-xl relative overflow-hidden">
+                    <div class="flex justify-between mb-2 opacity-50"><i data-lucide="users" class="w-4 h-4"></i> <span class="text-[8px] font-black uppercase tracking-tighter">待收回款</span></div>
+                    <h3 class="text-2xl font-black">${{ formatCurrency(config.pendingRefund) }}</h3>
+                    <button v-if="config.pendingRefund > 0" @click="collectRefund" class="absolute bottom-2 right-4 bg-white/20 hover:bg-white/40 p-1.5 rounded-full transition-all">
+                        <i data-lucide="corner-left-up" class="w-3.5 h-3.5"></i>
+                    </button>
+                </div>
             </div>
 
-        </main>
+            <!-- 累積資產帳本 -->
+            <div class="step-card bg-gray-900 text-white shadow-2xl relative overflow-hidden">
+                <p class="text-[10px] font-black opacity-50 uppercase tracking-widest mb-2">現有存款累積 (護城河水位)</p>
+                <h3 class="text-4xl font-black mb-6">$ {{ formatCurrency(config.currentSavings) }}</h3>
+                <div class="w-full bg-white/10 h-2.5 rounded-full overflow-hidden mb-2">
+                    <div class="bg-emerald-400 h-full rounded-full transition-all duration-1000" :style="{width: Math.min((config.currentSavings/config.moatTarget)*100, 100) + '%'}"></div>
+                </div>
+                <div class="flex justify-between text-[9px] font-black opacity-40 uppercase tracking-tighter">
+                    <span>進度：{{ Math.round((config.currentSavings/config.moatTarget)*100) }}%</span>
+                    <span>目標：$ {{ formatCurrency(config.moatTarget) }}</span>
+                </div>
+                <i data-lucide="shield-check" class="absolute -right-6 -bottom-6 w-32 h-32 opacity-10"></i>
+            </div>
 
-        <!-- 底部導航 -->
-        <nav class="fixed bottom-0 left-0 right-0 h-24 glass flex items-center justify-around z-50 px-2 shadow-2xl border-t overflow-x-auto no-scrollbar">
-            <button v-for="tab in tabs" :key="tab.id" @click="activeTab = tab.id"
-                    class="flex flex-col items-center gap-1.5 transition-all w-16 shrink-0"
-                    :class="activeTab === tab.id ? 'text-wealth-accent scale-110' : 'text-gray-300 opacity-60'">
-                <div class="p-2.5 rounded-2xl" :class="activeTab === tab.id ? 'bg-orange-50' : 'bg-transparent'"><i :class="tab.icon + ' text-lg'"></i></div>
-                <span class="text-[9px] font-black uppercase tracking-tighter">{{ tab.name }}</span>
-            </button>
-        </nav>
-
-        <!-- 指令設定中心 -->
-        <transition name="slide-up">
-            <div v-if="showSetup" class="fixed inset-0 z-[100] flex flex-col justify-end">
-                <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" @click="showSetup = false"></div>
-                <div class="relative bg-white w-full max-w-md mx-auto rounded-t-[3.5rem] p-8 shadow-2xl max-h-[96vh] overflow-y-auto no-scrollbar">
-                    <div class="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-8"></div>
-                    <h2 class="text-xl font-black text-center mb-8 uppercase tracking-widest text-gray-800 underline underline-offset-8 decoration-wealth-accent">戰略指令中心</h2>
-                    
-                    <div class="space-y-8 pb-10">
-                        <!-- Step 1: 收入與目標 -->
-                        <section class="space-y-4">
-                            <div class="flex justify-between items-center">
-                                <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">STEP 1. 核心數據源</p>
-                                <button @click="autoApplyStrategy" class="text-[9px] bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-xl font-black border border-emerald-100 flex items-center gap-1 shadow-sm"><i class="fa-solid fa-wand-magic-sparkles"></i> 建議分配</button>
-                            </div>
-                            <div class="grid grid-cols-2 gap-4">
-                                <div><label class="text-[9px] font-bold text-gray-400 uppercase">主要薪資</label><input type="number" v-model.number="data.salary" class="w-full border-b py-2 font-mono text-sm bg-transparent outline-none focus:border-wealth-accent"></div>
-                                <div><label class="text-[9px] font-bold text-emerald-500 uppercase">額外獎金</label><input type="number" v-model.number="data.extraIncome" class="w-full border-b py-2 font-mono text-sm bg-transparent outline-none border-emerald-100"></div>
-                                <div class="col-span-2 bg-yellow-50 p-4 rounded-2xl border border-yellow-100 shadow-inner">
-                                    <label class="text-[9px] font-black text-yellow-600 uppercase">護城河安全目標 / 現有存款</label>
-                                    <div class="grid grid-cols-2 gap-4 mt-1">
-                                        <input type="number" v-model.number="data.emergencyFund" class="w-full border-b border-yellow-200 py-1 font-mono text-sm bg-transparent outline-none" placeholder="現有">
-                                        <input type="number" v-model.number="data.moatTarget" class="w-full border-b border-yellow-200 py-1 font-mono text-sm bg-transparent outline-none" placeholder="目標">
-                                    </div>
-                                </div>
-                            </div>
-                        </section>
-
-                        <!-- Step 2: 固定支出細項 (核心需求：房租貸款等) -->
-                        <section class="space-y-4 bg-gray-50 p-5 rounded-[2.5rem] border border-gray-200">
-                            <p class="text-[10px] font-black text-gray-500 uppercase tracking-widest px-1">STEP 2. 固定支出明細 (月扣)</p>
-                            <div class="grid grid-cols-2 gap-x-4 gap-y-4">
-                                <div v-for="(val, key) in data.fixedExpenses" :key="key">
-                                    <label class="text-[9px] font-black text-gray-400 uppercase">{{ getFixedLabel(key) }}</label>
-                                    <div class="flex items-center gap-1 border-b py-1 border-gray-200">
-                                        <span class="text-[10px] text-gray-400 font-bold">NT$</span>
-                                        <input type="number" v-model.number="data.fixedExpenses[key]" class="w-full text-right outline-none font-mono text-xs bg-transparent font-black">
-                                    </div>
-                                </div>
-                            </div>
-                        </section>
-
-                        <!-- Step 3: 負債管理 -->
-                        <section class="space-y-4 bg-red-50/50 p-5 rounded-[2.5rem] border border-red-100/50">
-                            <p class="text-[10px] font-black text-red-600 uppercase tracking-widest">STEP 3. 債務止血診斷</p>
-                            <div class="grid grid-cols-2 gap-3 mb-2">
-                                <input type="text" v-model="newDebt.name" placeholder="名稱" class="text-[11px] p-2.5 border rounded-xl shadow-sm outline-none">
-                                <input type="number" v-model.number="newDebt.balance" placeholder="本金" class="text-[11px] p-2.5 border rounded-xl shadow-sm outline-none">
-                            </div>
-                            <div class="grid grid-cols-3 gap-3">
-                                <input type="number" v-model.number="newDebt.rate" placeholder="利率%" class="text-[11px] p-2.5 border rounded-xl outline-none">
-                                <input type="number" v-model.number="newDebt.monthly" placeholder="月繳" class="text-[11px] p-2.5 border rounded-xl outline-none">
-                                <button @click="handleAddDebt" class="bg-red-500 text-white rounded-xl text-[11px] font-black btn-active shadow-lg">新增</button>
-                            </div>
-                            <div v-for="d in data.debts" :key="d.id" class="flex justify-between items-center bg-white p-3 rounded-2xl border shadow-sm mt-3">
-                                <div><p class="text-[10px] font-bold text-gray-700">{{ d.name }} ({{ d.rate }}%)</p></div>
-                                <div class="flex items-center gap-3"><p class="text-[10px] font-mono font-bold text-red-500">-${{ formatNumber(d.monthly) }}</p><i class="fa-solid fa-trash-can text-gray-300 btn-active" @click="removeDebt(d.id)"></i></div>
-                            </div>
-                        </section>
-
-                        <!-- Step 4: 生活預算分裝 (零基編輯) -->
-                        <section class="space-y-4">
-                            <div class="flex justify-between items-center px-1">
-                                <p class="text-[10px] font-black text-wealth-blue uppercase tracking-widest">STEP 4. 預算分裝與編輯</p>
-                                <div class="text-[10px] font-black" :class="stats.remaining < 0 ? 'text-red-500' : 'text-emerald-500'">餘額剩：NT$ {{ formatNumber(stats.remaining) }}</div>
-                            </div>
-                            <div class="grid grid-cols-2 gap-4">
-                                <div class="bg-emerald-50 p-4 rounded-2xl border border-emerald-100">
-                                    <label class="text-[9px] font-bold text-emerald-700 uppercase">定投投資額</label>
-                                    <input type="number" v-model.number="data.investMonthly" class="w-full border-b border-emerald-200 py-1 font-mono text-sm outline-none bg-transparent font-black">
-                                </div>
-                                <div class="bg-emerald-50 p-4 rounded-2xl border border-emerald-100">
-                                    <label class="text-[9px] font-bold text-emerald-700 uppercase">預存袋分攤</label>
-                                    <input type="number" v-model.number="data.sinkingMonthly" class="w-full border-b border-emerald-200 py-1 font-mono text-sm outline-none bg-transparent font-black">
-                                </div>
-                                <div class="bg-blue-50 p-4 rounded-2xl border border-blue-100">
-                                    <label class="text-[9px] font-bold text-blue-700 uppercase">週餐費設定</label>
-                                    <input type="number" v-model.number="inputWeeklyFood" @input="updateFoodFromWeekly" class="w-full border-b border-blue-200 py-1 font-mono text-sm outline-none bg-transparent font-black">
-                                </div>
-                                <div class="bg-blue-50 p-4 rounded-2xl border border-blue-100">
-                                    <label class="text-[9px] font-bold text-blue-700 uppercase">雜支/餘額目標</label>
-                                    <input type="number" v-model.number="data.miscTarget" class="w-full border-b border-blue-200 py-1 font-mono text-sm outline-none bg-transparent font-black">
-                                </div>
-                                <div class="bg-blue-50 p-4 rounded-2xl border border-blue-100">
-                                    <label class="text-[9px] font-bold text-blue-700 uppercase">交通預算包</label>
-                                    <input type="number" v-model.number="data.transportTotal" class="w-full border-b border-blue-200 py-1 font-mono text-sm outline-none bg-transparent font-black">
-                                </div>
-                                <div class="bg-blue-50 p-4 rounded-2xl border border-blue-100">
-                                    <label class="text-[9px] font-bold text-blue-700 uppercase">家用預算包</label>
-                                    <input type="number" v-model.number="data.householdTotal" class="w-full border-b border-blue-200 py-1 font-mono text-sm outline-none bg-transparent font-black">
-                                </div>
-                            </div>
-                        </section>
-
-                        <!-- Step 5: 目標設定中心 -->
-                        <section class="space-y-4">
-                            <p class="text-[10px] font-black text-gray-400 uppercase px-1">STEP 5. 專項目標金額設定</p>
-                            <div class="grid grid-cols-2 gap-4 bg-gray-50 p-5 rounded-[2.5rem] border border-gray-200">
-                                <div class="col-span-2 grid grid-cols-3 gap-2 pb-3 border-b mb-2">
-                                    <div><label class="text-[8px] text-gray-500 uppercase">小花金額</label><input type="number" v-model.number="data.challengeConfig.flowerValue" class="w-full border-b py-1 font-mono text-xs outline-none bg-transparent"></div>
-                                    <div><label class="text-[8px] text-gray-500 uppercase">旅遊總算</label><input type="number" v-model.number="data.travel.total" class="w-full border-b py-1 font-mono text-xs outline-none bg-transparent"></div>
-                                    <div><label class="text-[8px] text-gray-500 uppercase">旅遊天數</label><input type="number" v-model.number="data.travel.days" class="w-full border-b py-1 font-mono text-xs outline-none bg-transparent"></div>
-                                </div>
-                                <div v-for="fund in data.sinkingFunds" :key="fund.id" class="space-y-1">
-                                    <label class="text-[9px] font-black text-gray-400 uppercase truncate block">{{ fund.name }}目標</label>
-                                    <input type="number" v-model.number="fund.target" class="w-full border-b py-1 font-mono text-xs outline-none bg-transparent font-bold">
-                                </div>
-                            </div>
-                        </section>
-
-                        <button @click="showSetup = false" 
-                                :disabled="stats.remaining < 0"
-                                class="w-full py-5 bg-wealth-dark text-white rounded-[2.5rem] font-black shadow-xl btn-active tracking-[0.3em] uppercase disabled:opacity-50">
-                            {{ stats.remaining < 0 ? '預算透支無法保存' : '同步指令並啟動' }}
-                        </button>
+            <!-- 即時進度條 -->
+            <div class="space-y-4">
+                <h4 class="font-black text-gray-400 text-[10px] uppercase tracking-widest">信封預算執行水位</h4>
+                <div v-for="env in envelopes" :key="env.id" class="step-card border-none bg-gray-50 p-5 space-y-3 shadow-sm">
+                    <div class="flex justify-between text-[11px] font-black">
+                        <span class="text-gray-800">{{ env.name }}</span>
+                        <span :class="env.spent > env.budget ? 'text-rose-500' : 'text-gray-400'" class="font-mono tracking-tighter">
+                            已耗 {{ Math.round((env.spent/env.budget)*100) }}% | 剩 ${{ formatCurrency(env.budget - env.spent) }}
+                        </span>
+                    </div>
+                    <div class="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
+                        <div :class="env.spent > env.budget ? 'bg-rose-500' : 'bg-blue-600'" class="h-full transition-all duration-1000" :style="{width: Math.min((env.spent/env.budget)*100, 100) + '%'}"></div>
                     </div>
                 </div>
             </div>
-        </transition>
+        </div>
 
-        <!-- 通用輸入 Modal -->
-        <transition name="fade">
-            <div v-if="modal.show" class="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm">
-                <div class="bg-white w-full max-w-sm rounded-[2.5rem] p-6 shadow-2xl space-y-6">
-                    <h3 class="text-center font-black text-lg text-gray-700">{{ modal.title }}</h3>
-                    <div class="bg-gray-50 p-4 rounded-2xl flex items-center justify-center border border-gray-100">
-                        <span class="text-2xl font-bold text-gray-400 mr-2">NT$</span>
-                        <input type="number" v-model="inputValue" autoFocus class="bg-transparent text-4xl font-mono font-bold text-gray-800 outline-none w-40 text-center" placeholder="0" />
+        <!-- EXECUTION: 扣款執行 -->
+        <div v-if="currentTab === 'execution'" class="animate-in fade-in duration-500 space-y-8">
+            <h2 class="text-2xl font-black">每日扣款記帳</h2>
+            
+            <div class="bg-white p-8 rounded-[40px] border-2 border-gray-900 shadow-2xl space-y-8">
+                <div class="space-y-2">
+                    <div class="flex justify-between items-end">
+                        <label class="text-[10px] font-black text-gray-400 uppercase">本次總開銷</label>
+                        <span v-if="selectedEnv" class="text-[10px] font-black text-blue-600">袋子剩：${{ formatCurrency(selectedEnv.budget - selectedEnv.spent) }}</span>
                     </div>
-                    <div class="grid grid-cols-2 gap-3">
-                        <button @click="modal.show = false" class="py-4 rounded-2xl font-bold text-gray-400 bg-gray-100 uppercase tracking-widest text-[11px]">取消</button>
-                        <button @click="handleModalSubmit" class="py-4 rounded-2xl font-bold text-white bg-wealth-dark shadow-lg btn-active uppercase text-[11px]">確定</button>
+                    <input type="number" v-model.number="newTx.amount" class="w-full border-b-4 border-gray-100 py-3 font-black text-5xl focus:border-gray-900 outline-none transition-all" placeholder="0">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-[10px] font-black text-gray-400 uppercase block mb-1">扣款來源</label>
+                        <select v-model="newTx.envId" class="w-full bg-gray-50 p-3.5 rounded-2xl font-bold text-sm outline-none border border-gray-100">
+                            <option v-for="env in envelopes" :value="env.id">{{ env.name }}</option>
+                            <option value="misc">雜支/餘額袋</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-black text-gray-400 uppercase block mb-1">支付工具</label>
+                        <div class="flex bg-gray-100 p-1.5 rounded-2xl gap-1 h-[52px]">
+                            <button @click="newTx.method = 'cash'" :class="newTx.method === 'cash' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-400'" class="toggle-btn">現金</button>
+                            <button @click="newTx.method = 'card'" :class="newTx.method === 'card' ? 'bg-indigo-600 text-white shadow-lg' : 'text-gray-400'" class="toggle-btn">信用卡</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 分帳代墊 -->
+                <div class="pt-6 border-t border-gray-100 space-y-4">
+                    <div class="flex justify-between items-center">
+                        <div class="flex items-center gap-2">
+                            <i data-lucide="users" class="w-4 h-4 text-gray-400"></i>
+                            <span class="text-[10px] font-black text-gray-800">幫朋友墊錢了嗎？</span>
+                        </div>
+                        <div @click="newTx.isSplit = !newTx.isSplit" :class="newTx.isSplit ? 'bg-emerald-500' : 'bg-gray-200'" class="w-12 h-6 rounded-full relative transition-all cursor-pointer">
+                            <div :class="newTx.isSplit ? 'translate-x-6' : 'translate-x-1'" class="absolute top-1 w-4 h-4 bg-white rounded-full transition-all"></div>
+                        </div>
+                    </div>
+                    <div v-if="newTx.isSplit" class="animate-in slide-in-from-top-2">
+                        <label class="text-[9px] font-black text-emerald-600 uppercase mb-1 block">代墊金額 (待收回)</label>
+                        <input type="number" v-model.number="newTx.splitAmount" class="input-underline border-emerald-100 text-emerald-700 font-bold bg-transparent" placeholder="輸入代墊部分">
+                    </div>
+                </div>
+
+                <button @click="recordTransaction" class="w-full bg-gray-900 text-white py-5 rounded-[40px] font-black text-lg active:scale-95 shadow-xl transition-all">確定扣款 (袋子減少)</button>
+            </div>
+
+            <!-- 最近紀錄 -->
+            <div class="space-y-4">
+                <h4 class="font-black text-gray-400 text-[10px] uppercase flex items-center gap-2"><i data-lucide="history" class="w-3 h-3"></i> 最近紀錄</h4>
+                <div v-for="tx in transactions.slice().reverse().slice(0, 5)" :key="tx.id" class="flex justify-between items-center p-4 border-b border-gray-50">
+                    <div class="flex items-center gap-4">
+                        <div :class="tx.method === 'card' ? 'bg-indigo-50 text-indigo-600' : 'bg-gray-100 text-gray-500'" class="w-10 h-10 rounded-full flex items-center justify-center">
+                            <i :data-lucide="tx.method === 'card' ? 'credit-card' : 'banknote'" class="w-4 h-4"></i>
+                        </div>
+                        <div>
+                            <p class="font-black text-sm">{{ getEnvName(tx.envId) }}</p>
+                            <p class="text-[9px] font-bold text-gray-400">{{ tx.date }} {{ tx.isSplit ? '· 代墊隔離' : '' }}</p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <p class="font-black text-gray-900">-$ {{ formatCurrency(tx.amount) }}</p>
+                        <p v-if="tx.isSplit" class="text-[8px] font-bold text-emerald-500">待收：$ {{ formatCurrency(tx.splitAmount) }}</p>
                     </div>
                 </div>
             </div>
-        </transition>
+        </div>
 
-    </div>
+    </main>
 
-    <script>
-        const { createApp, ref, reactive, computed, watch } = Vue;
+    <!-- 底部導航欄 -->
+    <footer class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex justify-around p-3 pb-8 z-50">
+        <button v-for="t in menuTabs" :key="t.id" @click="currentTab = t.id" :class="currentTab === t.id ? 'text-gray-900 scale-110' : 'text-gray-300'" class="flex flex-col items-center gap-1 transition-all">
+            <i :data-lucide="t.icon" class="w-5 h-5"></i>
+            <span class="text-[8px] font-black uppercase tracking-tighter">{{ t.name }}</span>
+        </button>
+    </footer>
 
-        createApp({
-            setup() {
-                const now = new Date();
-                const currentYear = now.getFullYear();
-                const currentMonth = now.getMonth() + 1;
-                
-                const getMonthWeeks = (y, m) => {
-                    const weeks = [];
-                    const start = new Date(y, m-1, 1);
-                    const end = new Date(y, m, 0);
-                    let curr = new Date(start);
-                    while(curr <= end) {
-                        let ws = new Date(curr);
-                        let we = new Date(curr);
-                        we.setDate(ws.getDate() + 6);
-                        if (we > end) we = end;
-                        weeks.push(`${ws.getMonth()+1}/${ws.getDate()} - ${we.getMonth()+1}/${we.getDate()}`);
-                        curr.setDate(curr.getDate() + 7);
-                    }
-                    return weeks;
-                };
-                const foodWeeks = getMonthWeeks(currentYear, currentMonth);
+</div>
 
-                const defaultData = {
-                    salary: 45600, extraIncome: 0,
-                    fixedExpenses: { loan: 3500, rent: 12000, phone: 699, utility: 1500, other: 0 },
-                    debts: [], investMonthly: 10000, sinkingMonthly: 5000, emergencyFund: 15000, moatTarget: 120000,
-                    foodTotal: 12500, transportTotal: 2000, householdTotal: 5000, miscTarget: 2500,
-                    challengeConfig: { flowerValue: 400 },
-                    flowers: Array(100).fill(false),
-                    sinkingFunds: [
-                        { id: 1, name: '年度稅金', target: 12000, current: 0, icon: 'calendar-days' },
-                        { id: 2, name: '定期保費', target: 20000, current: 0, icon: 'heart-pulse' },
-                        { id: 3, name: '出國計畫', target: 100000, current: 0, icon: 'plane' },
-                        { id: 4, name: '儲備緩衝', target: 50000, current: 0, icon: 'money-bill-wave' },
-                        { id: 5, name: '購物計畫', target: 10000, current: 0, icon: 'bag-shopping' },
-                        { id: 6, name: '社交聚會', target: 10000, current: 0, icon: 'users' },
-                        { id: 7, name: '自定義A', target: 5000, current: 0, icon: 'tag' },
-                        { id: 8, name: '自定義B', target: 5000, current: 0, icon: 'tag' }
-                    ],
-                    paidWeeks: [], reservedCC: 0, reservedMisc: 0,
-                    travel: { total: 50000, fixed: 25000, gifts: 5000, days: 5 }
-                };
+<script>
+const { createApp, ref, computed, onMounted, watch, nextTick } = Vue;
 
-                const data = reactive(JSON.parse(localStorage.getItem('asset_commander_data')) || defaultData);
-                const inputWeeklyFood = ref(Math.floor(data.foodTotal / foodWeeks.length));
-                watch(data, (v) => localStorage.setItem('asset_commander_data', JSON.stringify(v)), { deep: true });
+createApp({
+    setup() {
+        const currentTab = ref('setup');
+        const message = ref("");
+        
+        const tabs = [{id: 'setup', name: '戰略指令'}, {id: 'dashboard', name: '戰報分析'}, {id: 'execution', name: '扣款執行'}];
+        const menuTabs = [
+            { id: 'dashboard', name: 'Dashboard', icon: 'layout-dashboard' },
+            { id: 'setup', name: 'Wizard', icon: 'settings' },
+            { id: 'execution', name: 'Log', icon: 'wallet' }
+        ];
 
-                const activeTab = ref('budget');
-                const showSetup = ref(false);
-                const soulPrice = ref(null);
-                const inputValue = ref('');
-                const newDebt = reactive({ name: '', balance: null, rate: null, monthly: null });
-                const modal = reactive({ show: false, type: '', key: '', title: '', index: -1 });
+        // --- 核心資產狀態 ---
+        const config = ref({
+            salary: 55000,
+            bonus: 0,
+            moatTarget: 300000,
+            currentSavings: 120000, // 會隨月份累積
+            cardHolding: 0,      // 信用卡待繳隔離區
+            pendingRefund: 0,    // 代墊待收回
+            fixed: {
+                debt: 3500,
+                rent: 12000,
+                telecom: 699,
+                utility: 1500,
+                other: 0
+            },
+            debts: [
+                { name: '手機分期', principal: 10000, rate: 0, monthly: 500 }
+            ],
+            goals: { flower: 400, travelBudget: 50000, travelDays: 5 },
+            longTerm: { tax: 12000, insurance: 20000, travel: 100000, buffer: 50000, shopping: 10000, social: 10000, wish: 30000, dirt: 5000 }
+        });
 
-                const tabs = [
-                    { id: 'guide', name: '全解指南', icon: 'fa-solid fa-book-open' },
-                    { id: 'budget', name: '執行袋', icon: 'fa-solid fa-envelope-open-text' },
-                    { id: 'challenge', name: '拷問挑戰', icon: 'fa-solid fa-heart' },
-                    { id: 'sinking', name: '預存袋', icon: 'fa-solid fa-piggy-bank' },
-                    { id: 'travel', name: '旅遊精算', icon: 'fa-solid fa-plane-departure' }
-                ];
+        const envelopes = ref([
+            { id: 'env_1', name: '定期定額投', budget: 0, spent: 0, type: 'green' },
+            { id: 'env_2', name: '每月撥入預存', budget: 0, spent: 0, type: 'green' },
+            { id: 'env_3', name: '週餐費設定', budget: 0, spent: 0, type: 'blue' },
+            { id: 'env_4', name: '雜支/餘額袋', budget: 0, spent: 0, type: 'blue' },
+            { id: 'env_5', name: '交通加油包', budget: 0, spent: 0, type: 'blue' },
+            { id: 'env_6', name: '日用家事包', budget: 0, spent: 0, type: 'blue' }
+        ]);
 
-                const stats = computed(() => {
-                    const income = Number(data.salary) + Number(data.extraIncome);
-                    const debtMonthly = data.debts.reduce((a, b) => a + Number(b.monthly), 0);
-                    const fixedOnly = Object.values(data.fixedExpenses).reduce((a, b) => a + Number(b), 0);
-                    const totalFixed = fixedOnly + debtMonthly;
-                    const prioritySavings = Number(data.investMonthly) + Number(data.sinkingMonthly);
-                    const livingNecessary = Number(data.foodTotal) + Number(data.transportTotal) + Number(data.householdTotal);
-                    const remaining = income - totalFixed - prioritySavings - livingNecessary;
+        const transactions = ref([]);
+        const newDebt = ref({ name: '', principal: 0, rate: 0, monthly: 0 });
+        const newTx = ref({ amount: 0, envId: 'env_3', method: 'cash', isSplit: false, splitAmount: 0 });
 
-                    const doneCount = data.flowers.filter(f => f).length;
-                    let level = 3;
-                    const hasHighDebt = data.debts.some(d => Number(d.rate) > 7);
-                    if (hasHighDebt) level = 1; else if (data.emergencyFund < data.moatTarget) level = 2;
+        // --- 計算邏輯 ---
+        const totalEnergy = computed(() => (config.value.salary || 0) + (config.value.bonus || 0));
+        const lifeHourlyRate = computed(() => totalEnergy.value / 160);
+        
+        const strategyLevel = computed(() => {
+            return config.value.debts.some(d => d.rate > 7) ? 1 : 2;
+        });
 
-                    return { income, totalFixed, prioritySavings, livingNecessary, remaining, level, hasHighDebt, 
-                             currentStage: Math.floor(doneCount / 20) + 1, doneInStage: doneCount % 20 };
-                });
+        const totalFixedAndDebt = computed(() => {
+            const fixedSum = Object.values(config.value.fixed).reduce((a, b) => a + (Number(b) || 0), 0);
+            const debtSum = config.value.debts.reduce((a, b) => a + (Number(b.monthly) || 0), 0);
+            return fixedSum + debtSum;
+        });
 
-                const levelName = computed(() => ['止血模式','護城河模式','擴張模式'][stats.value.level-1]);
-                const levelData = computed(() => {
-                    const lv = stats.value.level;
-                    if (lv === 1) return { name: '止血', advice: '有利率 > 7% 債務。戰略指令：暫停投資，將每月餘額 100% 沖銷債務本金。', icon: 'fa-solid fa-kit-medical', style: 'bg-red-50 border-red-200 text-red-700' };
-                    if (lv === 2) return { name: '護城河', advice: '無高利貸但安全水位不足。指令：削減雜支，優先存滿護城河目標。', icon: 'fa-solid fa-shield-halved', style: 'bg-yellow-50 border-yellow-200 text-yellow-800' };
-                    return { name: '擴張', advice: '財務體質極佳。執行 532 分配：啟動 30% 投資與 20% 預存，發揮複利效應。', icon: 'fa-solid fa-chart-line', style: 'bg-green-50 border-green-200 text-green-800' };
-                });
+        const remainingBalance = computed(() => {
+            const envSum = envelopes.value.reduce((a, b) => a + (Number(b.budget) || 0), 0);
+            return totalEnergy.value - totalFixedAndDebt.value - envSum;
+        });
 
-                const autoApplyStrategy = () => {
-                    const surplus = stats.value.income - stats.value.totalFixed;
-                    if (surplus <= 0) return alert("薪資不足以支付固定費！");
-                    if (stats.value.hasHighDebt) { data.investMonthly = 0; data.sinkingMonthly = 0; }
-                    else { data.investMonthly = Math.floor(surplus * 0.3); data.sinkingMonthly = Math.floor(surplus * 0.2); }
-                    const left = surplus - data.investMonthly - data.sinkingMonthly;
-                    data.foodTotal = Math.floor(left * 0.6);
-                    inputWeeklyFood.value = Math.floor(data.foodTotal / foodWeeks.length);
-                    data.transportTotal = Math.floor(left * 0.1);
-                    data.householdTotal = Math.floor(left * 0.1);
-                    data.miscTarget = Math.floor(left * 0.2);
-                };
+        const selectedEnv = computed(() => envelopes.value.find(e => e.id === newTx.value.envId));
 
-                const updateFoodFromWeekly = () => { data.foodTotal = inputWeeklyFood.value * foodWeeks.length; };
-                const formatNumber = (n) => Math.round(n || 0).toLocaleString();
-                const getFixedLabel = (k) => ({ loan: '學貸/分期', rent: '房租/房貸', phone: '電信/網路', utility: '水電瓦斯', other: '自訂其他' }[k]);
-                const getBagLabel = (k) => ({ householdTotal: '家用', transportTotal: '交通' }[k]);
-                const getIcon = (n) => ({ 'calendar-days': 'calendar-days', 'heart-pulse': 'heart-pulse', 'plane': 'plane', 'money-bill-wave': 'money-bill-wave', 'bag-shopping': 'bag-shopping', 'users': 'users', 'tag': 'tag' }[n] || 'circle');
+        // --- 方法 ---
+        const formatCurrency = (val) => new Intl.NumberFormat('zh-TW').format(val || 0);
+        const fixedLabel = (k) => ({ debt: '學貸/分期', rent: '房租/房貸', telecom: '電信/網路', utility: '水電瓦斯', other: '自訂其他' }[k]);
+        
+        const showMsg = (txt) => {
+            message.value = txt;
+            setTimeout(() => message.value = "", 3000);
+        };
 
-                const toggleWeek = (i) => { const idx = data.paidWeeks.indexOf(i); if (idx === -1) data.paidWeeks.push(i); else data.paidWeeks.splice(idx, 1); };
-                const isFlowerDoneInStage = (n) => data.flowers[(stats.value.currentStage - 1) * 20 + (n - 1)];
-                const toggleFlower = (n) => { const idx = (stats.value.currentStage - 1) * 20 + (n - 1); data.flowers[idx] = !data.flowers[idx]; };
-
-                const openModal = (type, key, title, index = -1) => { modal.show = true; modal.type = type; modal.key = key; modal.title = title; modal.index = index; inputValue.value = ''; };
-                const handleModalSubmit = () => {
-                    const v = parseInt(inputValue.value); if (!v || v <= 0) return;
-                    if (modal.type === 'swipe') { data[modal.key] -= v; data.reservedCC += v; }
-                    else if (modal.type === 'swipeMisc') { data.reservedCC += v; data.reservedMisc += v; }
-                    else if (modal.type === 'deposit') { data.sinkingFunds[modal.index].current += v; }
-                    modal.show = false;
-                };
-
-                const handleAddDebt = () => { if(!newDebt.name || !newDebt.balance) return; data.debts.push({ id: Date.now(), name: newDebt.name, balance: Number(newDebt.balance), rate: Number(newDebt.rate), monthly: Number(newDebt.monthly) }); newDebt.name = ''; newDebt.balance = null; newDebt.rate = null; newDebt.monthly = null; };
-                const removeDebt = (id) => data.debts = data.debts.filter(d => d.id !== id);
-
-                return { currentYear, currentMonth, currentMonthWeeks: foodWeeks, data, stats, activeTab, showSetup, levelData, soulPrice, modal, inputValue, inputWeeklyFood, newDebt, tabs, formatNumber, getFixedLabel, getBagLabel, getIcon, toggleWeek, isFlowerDoneInStage, toggleFlower, openModal, handleModalSubmit, handleAddDebt, removeDebt, weeklyFood: computed(()=>Math.floor(data.foodTotal/foodWeeks.length)), autoApplyStrategy, updateFoodFromWeekly, levelName: computed(()=>levelData.value.name) };
+        // 【預設戰術分配】：532 原則
+        const applyDefaultAllocation = () => {
+            const disposable = totalEnergy.value - totalFixedAndDebt.value;
+            if(disposable <= 0) {
+                showMsg("能量不足以進行戰術分配！");
+                return;
             }
-        }).mount('#app');
-    </script>
+
+            // 分配邏輯：
+            // 投資袋 (env_1) 30%
+            // 預存袋 (env_2) 20%
+            // 生活袋 (env_3~6) 合計 50%
+            const pInvest = Math.floor(disposable * 0.3);
+            const pPreSave = Math.floor(disposable * 0.2);
+            const pLivingBase = Math.floor(disposable * 0.5);
+
+            envelopes.value.forEach(env => {
+                if(env.id === 'env_1') env.budget = pInvest;
+                if(env.id === 'env_2') env.budget = pPreSave;
+                if(env.id === 'env_3') env.budget = Math.floor(pLivingBase * 0.4); // 週餐費佔生活 40%
+                if(env.id === 'env_4') env.budget = Math.floor(pLivingBase * 0.3); // 雜支 30%
+                if(env.id === 'env_5') env.budget = Math.floor(pLivingBase * 0.15); // 交通 15%
+                if(env.id === 'env_6') env.budget = Math.floor(pLivingBase * 0.15); // 家事 15%
+            });
+
+            showMsg("戰術指令：預算已自動指派任務。");
+        };
+
+        const addDebt = () => {
+            if(!newDebt.value.name) return;
+            config.value.debts.push({...newDebt.value});
+            newDebt.value = { name: '', principal: 0, rate: 0, monthly: 0 };
+            nextTick(() => lucide.createIcons());
+        };
+
+        const recordTransaction = () => {
+            if(newTx.value.amount <= 0) return;
+            const env = envelopes.value.find(e => e.id === newTx.value.envId);
+            const myActualPart = newTx.value.isSplit ? (newTx.value.amount - newTx.value.splitAmount) : newTx.value.amount;
+
+            // 扣除袋子水位 (袋子拿走了總金額)
+            if(env) env.spent += newTx.value.amount;
+
+            // 信用卡隔離
+            if(newTx.method === 'card') {
+                config.value.cardHolding += myActualPart;
+            }
+
+            // 代墊款隔離
+            if(newTx.value.isSplit) {
+                config.value.pendingRefund += newTx.value.splitAmount;
+            }
+
+            transactions.value.push({ id: Date.now(), date: new Date().toLocaleDateString('zh-TW'), ...newTx.value });
+            newTx.value = { amount: 0, envId: 'env_3', method: 'cash', isSplit: false, splitAmount: 0 };
+            showMsg("同步成功！");
+        };
+
+        const collectRefund = () => {
+            const amount = config.value.pendingRefund;
+            config.value.currentSavings += amount;
+            config.value.pendingRefund = 0;
+            showMsg(`收回代墊 $${formatCurrency(amount)} 已累積至護城河。`);
+        };
+
+        // 月度結轉：讓資產真正會「累積」
+        const confirmRollover = () => {
+            if(!confirm("啟動結轉指令？這將清空月支出水位，並將『沒花完的錢』與『結餘』自動滾入存款累積。")) return;
+            
+            let monthSaved = 0;
+            envelopes.value.forEach(env => {
+                monthSaved += (env.budget - env.spent);
+                env.spent = 0;
+            });
+            monthSaved += Math.max(0, remainingBalance.value);
+            
+            config.value.currentSavings += monthSaved;
+            config.value.cardHolding = 0;
+            transactions.value = [];
+            
+            showMsg(`結轉成功！本月存下 $${formatCurrency(monthSaved)}。`);
+        };
+
+        const exportCSV = () => {
+            let csv = "Date,Amount,Envelope,Method,Note\n";
+            transactions.value.forEach(t => {
+                csv += `${t.date},${t.amount},${getEnvName(t.envId)},${t.method},${t.isSplit ? 'Split' : ''}\n`;
+            });
+            const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `FINANCE_CMD_${new Date().toISOString().slice(0,10)}.csv`;
+            link.click();
+        };
+
+        const getEnvName = (id) => envelopes.value.find(e => e.id === id)?.name || '雜支袋';
+
+        onMounted(() => { 
+            lucide.createIcons();
+            // 初始化分配
+            applyDefaultAllocation();
+        });
+        watch(currentTab, () => nextTick(() => lucide.createIcons()));
+
+        return {
+            currentTab, tabs, menuTabs, config, envelopes, transactions, newDebt, newTx, message,
+            totalEnergy, lifeHourlyRate, strategyLevel, remainingBalance, selectedEnv,
+            formatCurrency, fixedLabel, addDebt, recordTransaction, collectRefund, confirmRollover, exportCSV, getEnvName, applyDefaultAllocation
+        };
+    }
+}).mount('#app');
+</script>
 </body>
 </html>
